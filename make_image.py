@@ -22,6 +22,16 @@ def make_image(args):
     header = hdu.header
     for i, dim in enumerate(dims, 1):
         header["NAXIS%d" % i] = dim
+
+    header["CTYPE1"] = "RA---SIN"
+    header["CTYPE2"] = "DEC--SIN"
+
+    if len(dims) >= 3:
+        header["CTYPE3"] = "FREQ"
+
+    if len(dims) >= 4:
+        header["CTYPE4"] = "STOKES"
+
     header.tofile(args.output, overwrite=True)
 
     # create full-sized zero image
@@ -67,8 +77,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if len(args.dimensions) < 2:
-        sys.exit("At least two dimensions required.")
+    if not (2 <= len(args.dimensions) <= 4):
+        sys.exit("At least two dimensions required. At most 4 dimensions allowed.")
 
     if not args.output:
         args.output = "image-%s.fits" % "-".join(str(d) for d in args.dimensions)
