@@ -10,54 +10,67 @@ import sys
 import numpy as np
 from astropy.io import fits
 
-def control_image(args):
-    dims = tuple(reversed(args.dimensions))
-    hdu = fits.PrimaryHDU(data=np.random.default_rng().normal(size=dims).astype(np.float32))
-    hdu.writeto('control.fits', overwrite=True)
-
-def make_zero_image(args):
+def make_image(args):
     dims = tuple(args.dimensions)
+
+    # create header
+
     dummy_dims = tuple(1 for d in dims)
     dummy_data = np.zeros(dummy_dims, dtype=np.float32)
-
     hdu = fits.PrimaryHDU(data=dummy_data)
 
     header = hdu.header
     for i, dim in enumerate(dims, 1):
-        header['NAXIS%d' % i] = dim
-    header.tofile('test.fits', overwrite=True)
-    
+        header["NAXIS%d" % i] = dim
+    header.tofile(args.output, overwrite=True)
+
+    # create full-sized zero image
+
     header_size = len(header.tostring()) # Probably 2880. We don't pad the header any more; it's just the bare minumum
-    data_size = (np.product(dims) * np.abs(header['BITPIX']//8))
+    data_size = (np.product(dims) * np.dtype(np.float32).itemsize)
     # This is not documented in the example, but appears to be Astropy's default behaviour
     # Pad the total file size to a multiple of the header block size
     block_size = 2880
     data_size = block_size * ((data_size//block_size) + 1)
 
-    with open('test.fits', 'rb+') as f:
+    with open(args.output, "rb+") as f:
         f.seek(header_size + data_size - 1)
-        f.write(b'\0')
+        f.write(b"\0")
 
-def write_random_data(args):
-    hdul = fits.open('test.fits', 'update', memmap=True)
+    # write random data
+
+    hdul = fits.open(args.output, "update", memmap=True)
     data = hdul[0].data
-    channel_shape = data.shape[-2:]
-    other_dims = data.shape[:-2]
-    for channel_index in itertools.product(*(range(d) for d in other_dims)):
-        # TODO split further into max chunks
-        data[channel_index][:] = np.random.default_rng().normal(size=channel_shape).astype(np.float32)
+
+    if not args.max_bytes:
+        strip_size = np.product(data.shape[-2:])
+    else:
+        strip_size = args.max_bytes // np.dtype(np.float32).itemsize
+
+    total_size = np.product(dims)
+    rounded_size = strip_size * (total_size // strip_size)
+    remainder = total_size - rounded_size
+    contiguous_data = data.ravel()
+
+    for i in range(0, rounded_size, strip_size):
+        contiguous_data[i:i+strip_size] = np.random.default_rng().normal(size=strip_size).astype(np.float32)
+
+    contiguous_data[rounded_size:total_size] = np.random.default_rng().normal(size=remainder).astype(np.float32)
+
     hdul.close()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Generate a synthetic FITS file.')
-    parser.add_argument('dimensions', metavar='N', type=int, nargs='+',
-                    help='The dimensions of the file, in order (XY, XYZ or XYZW), separated by spaces.')
+    parser = argparse.ArgumentParser(description="Generate a synthetic FITS file.")
+    parser.add_argument("dimensions", metavar="N", type=int, nargs="+", help="The dimensions of the file, in order (XY, XYZ or XYZW), separated by spaces.")
+    parser.add_argument("-m", "--max-bytes", type=int, help="The maximum size of image data (in bytes) to create in memory at once. Default is the channel size.")
+    parser.add_argument("-o", "--output", help="The output file name.")
 
     args = parser.parse_args()
-    
+
     if len(args.dimensions) < 2:
         sys.exit("At least two dimensions required.")
-    
-    make_zero_image(args)
-    write_random_data(args)
-    control_image(args)
+
+    if not args.output:
+        args.output = "image-%s.fits" % "-".join(str(d) for d in args.dimensions)
+
+    make_image(args)
