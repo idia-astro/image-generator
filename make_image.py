@@ -23,15 +23,6 @@ def make_image(args):
     for i, dim in enumerate(dims, 1):
         header["NAXIS%d" % i] = dim
 
-    header["CTYPE1"] = "RA---SIN"
-    header["CTYPE2"] = "DEC--SIN"
-
-    if len(dims) >= 3:
-        header["CTYPE3"] = "FREQ"
-
-    if len(dims) >= 4:
-        header["CTYPE4"] = "STOKES"
-
     header.tofile(args.output, overwrite=True)
 
     # create full-sized zero image
