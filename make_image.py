@@ -32,7 +32,7 @@ def make_image(args):
     # This is not documented in the example, but appears to be Astropy's default behaviour
     # Pad the total file size to a multiple of the header block size
     block_size = 2880
-    data_size = block_size * ((data_size//block_size) + 1)
+    data_size = block_size * (((data_size - 1)//block_size) + 1)
 
     with open(args.output, "rb+") as f:
         f.seek(header_size + data_size - 1)
