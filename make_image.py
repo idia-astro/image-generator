@@ -93,13 +93,13 @@ def make_image(args):
         if "channel" in args.nans:
             nan_channels = nan_sample(0, depth * stokes)
             for channel in nan_channels:
-                s, c = divmod(channel, channel_size)
+                s, c = divmod(channel, depth)
                 shaped_data[s,c] = np.nan
                 
         if "row" in args.nans:
             nan_rows = nan_sample(0, height * depth * stokes)
             for row in nan_rows:
-                s, row = divmod(row, channel_size)
+                s, row = divmod(row, height * depth)
                 c, y = divmod(row, height)
                 shaped_data[s,c,y] = np.nan
                 
