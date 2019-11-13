@@ -83,7 +83,7 @@ def make_image(args):
         # add row, column, channel and stokes nans here in separate passes
         # For now an implementation which ignores max_bytes
         
-        shaped_data = data.reshape(stokes, depth, width, height)
+        shaped_data = data.reshape(stokes, depth, height, width)
         
         if "stokes" in args.nans:
             nan_stokes = nan_sample(0, stokes)
@@ -106,7 +106,7 @@ def make_image(args):
         if "column" in args.nans:
             nan_columns = nan_sample(0, width * depth * stokes)
             for column in nan_columns:
-                s, column = divmod(column, channel_size)
+                s, column = divmod(column, width * depth)
                 c, x = divmod(column, width)
                 shaped_data[s,c,:,x] = np.nan
 
