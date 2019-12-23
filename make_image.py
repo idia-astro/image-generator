@@ -70,7 +70,7 @@ def make_image(args):
         for i in range(0, rounded_size, strip_size):
             contiguous_data[i:i+strip_size] = np.nan
         contiguous_data[rounded_size:total_size] = np.nan
-    elif "checkerboard" in args:
+    elif args.checkerboard:
         ch = args.checkerboard
         for i in np.arange(0, width, ch * 2):
             for j in np.arange(0, height, ch * 2):
