@@ -11,6 +11,7 @@ import numpy as np
 from astropy.io import fits
 
 NAN_OPTIONS = ("pixel", "row", "column", "channel", "stokes", "image")
+INF_OPTIONS = ("positive", "negative")
 
 def make_image(args):
     dims = tuple(args.dimensions)
@@ -65,6 +66,16 @@ def make_image(args):
     def nan_sample(start, end):
         nan_sample_size = int(np.round((args.nan_density/100) * (end - start)))
         return np.random.choice(range(start, end), nan_sample_size, False).astype(int)
+    
+    def inf_sample(start, end):
+        inf_sample_size = int(np.round((args.inf_density/100) * (end - start)))
+        return np.random.choice(range(start, end), inf_sample_size, False).astype(int)
+    
+    inf_choice = [];
+    if "positive" in args.infs:
+        inf_choice.append(np.inf)
+    if "negative" in args.infs:
+        inf_choice.append(-np.inf)
 
     if "image" in args.nans:
         for i in range(0, rounded_size, strip_size):
@@ -83,11 +94,17 @@ def make_image(args):
             contiguous_data[i:i+strip_size] = np.random.default_rng().normal(size=strip_size).astype(np.float32)
             if "pixel" in args.nans:
                 contiguous_data[nan_sample(i, i + strip_size)] = np.nan
+            if args.infs:
+                sample = inf_sample(i, i + strip_size)
+                contiguous_data[sample] = np.random.choice(inf_choice, sample.size)
 
         if remainder:
             contiguous_data[rounded_size:total_size] = np.random.default_rng().normal(size=remainder).astype(np.float32)
             if "pixel" in args.nans:
                 contiguous_data[nan_sample(rounded_size, total_size)] = np.nan
+            if args.infs:
+                sample = inf_sample(rounded_size, total_size)
+                contiguous_data[sample] = np.random.choice(inf_choice, sample.size)
     
         # add row, column, channel and stokes nans here in separate passes
         # For now an implementation which ignores max_bytes
@@ -126,6 +143,10 @@ if __name__ == "__main__":
     
     parser.add_argument("-n", "--nans", nargs="+", help="Options for inserting random NaNs, which are cumulative, separated by spaces. Any combination of %s. By default no NaNs are inserted. 'image' overrides all other options and creates an image full of NaNs. Channel, row and column algorithm currently ignores the --max-bytes restriction." % ", ".join(repr(o) for o in NAN_OPTIONS), default=[])
     parser.add_argument("-d", "--nan-density", type=float, help="The density of NaNs to insert, as a percentage. Default: 25. Ignored if -n/--nans is unset.", default=25.0)
+    
+    parser.add_argument("-i", "--infs", nargs="+", help="Options for inserting random INF pixels, which are cumulative, separated by spaces. Any combination of %s. By default no INFs are inserted." % ", ".join(repr(o) for o in INF_OPTIONS), default=[])
+    parser.add_argument("--inf-density", type=float, help="The density of INFs to insert, as a percentage. Default: 1. Ignored if -i/--infs is unset.", default=1.0)
+    
     parser.add_argument("-c", "--checkerboard", type=int, help="If this is set, the image is filled with a checkerboard pattern with each square the specified number of pixels. If it is unset, Gaussian noise is used. The checkerboard algorithm currently ignores the --max-bytes restriction. This option can be used together with the NaN options.")
     
     parser.add_argument("-o", "--output", help="The output file name.")
