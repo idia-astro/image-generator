@@ -43,6 +43,12 @@ def make_image(args):
         f.write(b"\0")
 
     # write random data
+    
+    # optionally seed the random number generator
+    if args.seed is not None:
+        rng = np.random.default_rng(args.seed)
+    else:
+        rng = np.random.default_rng()
 
     hdul = fits.open(args.output, "update", memmap=True)
     data = hdul[0].data
@@ -65,11 +71,11 @@ def make_image(args):
     
     def nan_sample(start, end):
         nan_sample_size = int(np.round((args.nan_density/100) * (end - start)))
-        return np.random.choice(range(start, end), nan_sample_size, False).astype(int)
+        return rng.choice(range(start, end), nan_sample_size, False).astype(int)
     
     def inf_sample(start, end):
         inf_sample_size = int(np.round((args.inf_density/100) * (end - start)))
-        return np.random.choice(range(start, end), inf_sample_size, False).astype(int)
+        return rng.choice(range(start, end), inf_sample_size, False).astype(int)
     
     inf_choice = [];
     if "positive" in args.infs:
@@ -91,20 +97,20 @@ def make_image(args):
                 shaped_data[:, :, i+ch:i+ch*2, j:j+ch] = 0.5
     else:
         for i in range(0, rounded_size, strip_size):
-            contiguous_data[i:i+strip_size] = np.random.default_rng().normal(size=strip_size).astype(np.float32)
+            contiguous_data[i:i+strip_size] = rng.normal(size=strip_size).astype(np.float32)
             if "pixel" in args.nans:
                 contiguous_data[nan_sample(i, i + strip_size)] = np.nan
             if args.infs:
                 sample = inf_sample(i, i + strip_size)
-                contiguous_data[sample] = np.random.choice(inf_choice, sample.size)
+                contiguous_data[sample] = rng.choice(inf_choice, sample.size)
 
         if remainder:
-            contiguous_data[rounded_size:total_size] = np.random.default_rng().normal(size=remainder).astype(np.float32)
+            contiguous_data[rounded_size:total_size] = rng.normal(size=remainder).astype(np.float32)
             if "pixel" in args.nans:
                 contiguous_data[nan_sample(rounded_size, total_size)] = np.nan
             if args.infs:
                 sample = inf_sample(rounded_size, total_size)
-                contiguous_data[sample] = np.random.choice(inf_choice, sample.size)
+                contiguous_data[sample] = rng.choice(inf_choice, sample.size)
     
         # add row, column, channel and stokes nans here in separate passes
         # For now an implementation which ignores max_bytes
@@ -150,6 +156,8 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--checkerboard", type=int, help="If this is set, the image is filled with a checkerboard pattern with each square the specified number of pixels. If it is unset, Gaussian noise is used. The checkerboard algorithm currently ignores the --max-bytes restriction. This option can be used together with the NaN options.")
     
     parser.add_argument("-o", "--output", help="The output file name.")
+    
+    parser.add_argument("-s", "--seed", help="Seed for the random number generator.", type=int)
 
     args = parser.parse_args()
 
