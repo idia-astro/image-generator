@@ -26,6 +26,11 @@ def make_image(args):
     header = hdu.header
     for i, dim in enumerate(dims, 1):
         header["NAXIS%d" % i] = dim
+    
+    if args.header:
+        extraheader = fits.Header.fromstring(args.header, sep="\n")
+        for card in extraheader.cards:
+            header.append(card)
 
     header.tofile(args.output, overwrite=True)
 
@@ -158,6 +163,8 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output", help="The output file name.")
     
     parser.add_argument("-s", "--seed", help="Seed for the random number generator.", type=int)
+    
+    parser.add_argument("-H", "--header", help="Additional entries to append to the header, as a literal string with cards separated by newlines. Must be parseable by astropy.")
 
     args = parser.parse_args()
 
