@@ -9,6 +9,8 @@ import itertools
 import sys
 import numpy as np
 from astropy.io import fits
+from astropy.modeling.models import Gaussian2D
+from astropy.stats import gaussian_fwhm_to_sigma
 
 NAN_OPTIONS = ("pixel", "row", "column", "channel", "stokes", "image")
 INF_OPTIONS = ("positive", "negative")
@@ -82,7 +84,7 @@ def make_image(args):
         inf_sample_size = int(np.round((args.inf_density/100) * (end - start)))
         return rng.choice(range(start, end), inf_sample_size, False).astype(int)
     
-    inf_choice = [];
+    inf_choice = []
     if "positive" in args.infs:
         inf_choice.append(np.inf)
     if "negative" in args.infs:
@@ -100,6 +102,12 @@ def make_image(args):
                 shaped_data[:, :, i+ch:i+ch*2, j+ch:j+ch*2] = 0.75
                 shaped_data[:, :, i:i+ch, j+ch:j+ch*2] = 0.5
                 shaped_data[:, :, i+ch:i+ch*2, j:j+ch] = 0.5
+    elif args.gaussian_model and (len(args.gaussian_model) - 1) / 6 == int(args.gaussian_model[0]):
+        params = args.gaussian_model
+        for k in np.arange(int(params[0])):
+            for i in np.arange(width):
+                for j in np.arange(height):
+                    shaped_data[:, :, i, j] += Gaussian2D(params[k * 6 + 3], params[k * 6 + 1], params[k * 6 + 2], params[k * 6 + 4] * gaussian_fwhm_to_sigma, params[k * 6 + 5] * gaussian_fwhm_to_sigma, params[k * 6 + 6] * np.pi / 180)(j, i)
     else:
         for i in range(0, rounded_size, strip_size):
             contiguous_data[i:i+strip_size] = rng.normal(size=strip_size).astype(np.float32)
@@ -159,6 +167,7 @@ if __name__ == "__main__":
     parser.add_argument("--inf-density", type=float, help="The density of INFs to insert, as a percentage. Default: 1. Ignored if -i/--infs is unset.", default=1.0)
     
     parser.add_argument("-c", "--checkerboard", type=int, help="If this is set, the image is filled with a checkerboard pattern with each square the specified number of pixels. If it is unset, Gaussian noise is used. The checkerboard algorithm currently ignores the --max-bytes restriction. This option can be used together with the NaN options.")
+    parser.add_argument("--gaussian-model", type=float, nargs="+", help="If this is set with correct number of parameters (6n + 1), the image is filled with a Gaussian model instead of Gaussian noise. A list of float including number of Gaussian components (n), center x (px), center y (px), amplitude, fwhm x (px), fwhm y (px), and p.a. (deg) of component 1, center x of component 2, etc.")
     
     parser.add_argument("-o", "--output", help="The output file name.")
     
