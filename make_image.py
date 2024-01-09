@@ -39,7 +39,7 @@ def make_image(args):
     # create full-sized zero image
 
     header_size = len(header.tostring()) # Probably 2880. We don't pad the header any more; it's just the bare minumum
-    data_size = (np.product(dims) * np.dtype(np.float32).itemsize)
+    data_size = (np.prod(dims) * np.dtype(np.float32).itemsize)
     # This is not documented in the example, but appears to be Astropy's default behaviour
     # Pad the total file size to a multiple of the header block size
     block_size = 2880
@@ -61,11 +61,11 @@ def make_image(args):
     data = hdul[0].data
 
     if not args.max_bytes:
-        strip_size = np.product(data.shape[-2:])
+        strip_size = np.prod(data.shape[-2:])
     else:
         strip_size = args.max_bytes // np.dtype(np.float32).itemsize
 
-    total_size = np.product(dims)
+    total_size = np.prod(dims)
     remainder = total_size % strip_size
     rounded_size = total_size - remainder
     contiguous_data = data.ravel()
