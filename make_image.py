@@ -2,7 +2,7 @@
 
 # Script for generating synthetic FITS files
 # Recipe for writing files too large to fit in memory taken from:
-# https://docs.astropy.org/en/stable/generated/examples/io/skip_create-large-fits.html
+# https://docs.astropy.org/en/stable/io/fits/appendix/faq.html#how-can-i-create-a-very-large-fits-file-from-scratch
 
 import argparse
 import itertools
